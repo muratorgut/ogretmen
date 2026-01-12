@@ -116,9 +116,9 @@ export default function Step2Config() {
                 </div>
 
                 <Tabs defaultValue="p1" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="p1">P1 Ayarları ({localConfig.p1Name})</TabsTrigger>
-                        <TabsTrigger value="p2">P2 Ayarları ({localConfig.p2Name})</TabsTrigger>
+                    <TabsList className="flex flex-col h-auto w-full sm:grid sm:grid-cols-2">
+                        <TabsTrigger value="p1" className="w-full">P1 Ayarları ({localConfig.p1Name})</TabsTrigger>
+                        <TabsTrigger value="p2" className="w-full">P2 Ayarları ({localConfig.p2Name})</TabsTrigger>
                     </TabsList>
 
                     <RubricTabContent
@@ -183,10 +183,11 @@ function RubricTabContent({ type, titleValue, onTitleChange, items, currentTotal
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     <div className="flex-1">
                                         <Label className="text-xs">Kriter Adı</Label>
-                                        <Input
+                                        <Textarea
                                             value={item.label}
                                             onChange={(e) => onUpdate(item.id, 'label', e.target.value)}
                                             placeholder="Örn: Derse hazırlıklı gelme"
+                                            className="min-h-[60px] resize-none"
                                         />
                                     </div>
                                     <div className="w-full sm:w-24">
