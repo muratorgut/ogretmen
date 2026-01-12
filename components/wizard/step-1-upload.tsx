@@ -165,7 +165,7 @@ export default function Step1Upload() {
                         onCut={(e) => e.preventDefault()}
                         autoComplete="off"
                     />
-                    <p className="text-xs text-muted-foreground">PDF analizi için gereklidir. Varsayılan key tanımlıdır.</p>
+                    <p className="text-xs text-muted-foreground">PDF analizi için gereklidir. (Kendi anahtarınızı giriniz)</p>
                 </div>
 
                 <div className="grid w-full items-center gap-1.5">

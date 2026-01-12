@@ -77,7 +77,7 @@ const defaultState: AppState = {
   file: null,
   meta: { lessonName: '', className: '' },
   students: [],
-  apiKey: 'AIzaSyCnbif86gvdQLHRzgUcE_TsAlgMzVJUueY',
+  apiKey: '',
   geminiModel: 'gemini-3-flash-preview',
   config: {
     p1Name: 'Derse Hazırlık ve Katılım',
