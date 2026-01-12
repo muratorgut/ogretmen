@@ -1,12 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    experimental: {
+        serverComponentsExternalPackages: ['@react-pdf/renderer'],
+    },
     eslint: {
         ignoreDuringBuilds: true,
     },
     typescript: {
         ignoreBuildErrors: true,
     },
-    serverExternalPackages: ['@react-pdf/renderer'],
     webpack: (config, { isServer }) => {
         if (!isServer) {
             config.resolve.fallback = {
