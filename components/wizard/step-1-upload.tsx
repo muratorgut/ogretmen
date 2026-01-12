@@ -16,7 +16,7 @@ export default function Step1Upload() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [warning, setWarning] = useState<string | null>(null);
-    const [apiKey, setApiKey] = useState(storeApiKey || 'AIzaSyCnbif86gvdQLHRzgUcE_TsAlgMzVJUueY');
+    const [apiKey, setApiKey] = useState(storeApiKey || '');
     const [geminiModel, setGeminiModel] = useState<GeminiModel>(storeGeminiModel || 'gemini-3-flash-preview');
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
