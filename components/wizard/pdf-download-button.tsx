@@ -6,15 +6,7 @@ import { Button } from '@/components/ui/button';
 import { AppConfig, Student } from './store';
 import dynamic from 'next/dynamic';
 
-const PDFDownloadLink = dynamic(
-    () => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink),
-    { ssr: false, loading: () => <Button variant="outline" disabled>Kütüphane Yükleniyor...</Button> }
-);
-
-const PerformanceChartPdf = dynamic(
-    () => import('@/components/pdf-document').then(mod => mod.PerformanceChartPdf),
-    { ssr: false }
-);
+// Imports moved inside the handler to prevent early loading issues
 
 interface Props {
     students: Student[];
@@ -62,62 +54,83 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 const PdfDownloadButton = ({ students, config, meta, type, btnText }: Props) => {
     const [isClient, setIsClient] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [status, setStatus] = useState<'IDLE' | 'GENERATING' | 'ERROR'>('IDLE');
+    const [errorDetails, setErrorDetails] = useState<string>("");
 
     useEffect(() => {
         setIsClient(true);
     }, []);
 
+    const handleDownload = async () => {
+        try {
+            setStatus('GENERATING');
+            setErrorDetails("");
+
+            // Dynamically import the renderer to ensure it runs on client
+            const { pdf } = await import('@react-pdf/renderer');
+            // Dynamically import the document
+            const { PerformanceChartPdf } = await import('@/components/pdf-document');
+
+            const blob = await pdf(
+                <PerformanceChartPdf
+                    students={students}
+                    config={config}
+                    meta={meta}
+                    type={type}
+                />
+            ).toBlob();
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${meta.className}_${type}_Cizelge.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            setStatus('IDLE');
+        } catch (err: any) {
+            console.error("Manual PDF Generation Failed:", err);
+            setStatus('ERROR');
+
+            let msg = "Bilinmeyen Hata";
+            if (err) {
+                if (typeof err === 'string') msg = err;
+                else if (err instanceof Error) msg = err.message + "\\n" + err.stack;
+                else msg = JSON.stringify(err);
+            }
+            setErrorDetails(msg);
+        }
+    };
+
     if (!isClient) return <Button variant="outline" disabled>Yükleniyor...</Button>;
 
-    if (!isGenerating) {
+    if (status === 'ERROR') {
         return (
-            <Button
-                variant="outline"
-                className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
-                onClick={() => setIsGenerating(true)}
-            >
-                {btnText} (Hazırla)
-            </Button>
+            <div className="space-y-2">
+                <div className="p-4 border border-red-200 bg-red-50 text-red-700 rounded text-sm overflow-auto max-h-[300px]">
+                    <p className="font-bold">PDF Oluşturma Hatası:</p>
+                    <pre className="mt-1 text-xs whitespace-pre-wrap font-mono">
+                        {errorDetails}
+                    </pre>
+                </div>
+                <Button variant="outline" onClick={() => setStatus('IDLE')} className="w-full">
+                    Tekrar Dene
+                </Button>
+            </div>
         );
     }
 
     return (
-        <ErrorBoundary>
-            <div className="flex gap-2 items-center w-full">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="px-2 h-9 text-gray-500"
-                    onClick={() => setIsGenerating(false)}
-                >
-                    X
-                </Button>
-                <div className="flex-1">
-                    <PDFDownloadLink
-                        document={<PerformanceChartPdf students={students} config={config} meta={meta} type={type} />}
-                        fileName={`${meta.className}_${type}_Cizelge.pdf`}
-                        className="w-full block"
-                    >
-                        {({ loading, error }) => {
-                            if (error) {
-                                console.error("PDF Generation Error:", error);
-                                return "Hata oluştu (Tekrar deneyin)";
-                            }
-                            return (
-                                <Button
-                                    variant="outline"
-                                    className="w-full text-red-600 border-red-200 hover:bg-red-50"
-                                    disabled={loading}
-                                >
-                                    {loading ? 'PDF Hazırlanıyor...' : 'İNDİR'}
-                                </Button>
-                            );
-                        }}
-                    </PDFDownloadLink>
-                </div>
-            </div>
-        </ErrorBoundary>
+        <Button
+            variant="outline"
+            className={`w-full ${status === 'GENERATING' ? 'opacity-50 cursor-wait' : 'text-blue-600 border-blue-200 hover:bg-blue-50'}`}
+            onClick={handleDownload}
+            disabled={status === 'GENERATING'}
+        >
+            {status === 'GENERATING' ? 'PDF Oluşturuluyor...' : `${btnText} (İndir)`}
+        </Button>
     );
 };
 
