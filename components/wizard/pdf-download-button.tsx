@@ -38,9 +38,13 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     render() {
         if (this.state.hasError) {
             return (
-                <div className="p-4 border border-red-200 bg-red-50 text-red-700 rounded text-sm">
+                <div className="p-4 border border-red-200 bg-red-50 text-red-700 rounded text-sm overflow-auto">
                     <p className="font-bold">PDF Oluşturma Hatası:</p>
-                    <p className="font-mono mt-1 text-xs">{this.state.error?.message}</p>
+                    <pre className="mt-1 text-xs whitespace-pre-wrap">
+                        {this.state.error instanceof Error
+                            ? `${this.state.error.name}: ${this.state.error.message}\n${this.state.error.stack}`
+                            : JSON.stringify(this.state.error, null, 2)}
+                    </pre>
                 </div>
             );
         }
