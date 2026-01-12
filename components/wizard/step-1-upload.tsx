@@ -18,6 +18,7 @@ export default function Step1Upload() {
     const [warning, setWarning] = useState<string | null>(null);
     const [apiKey, setApiKey] = useState(storeApiKey || '');
     const [geminiModel, setGeminiModel] = useState<GeminiModel>(storeGeminiModel || 'gemini-3-flash-preview');
+    const [progressText, setProgressText] = useState<string>("");
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -34,80 +35,92 @@ export default function Step1Upload() {
 
         setLoading(true);
         setError(null);
+        setWarning(null);
 
         try {
             setFile(file);
 
-            // Convert to Base64
-            const base64Promise = new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = error => reject(error);
-            });
-            const base64File = await base64Promise;
+            // Dynamic import of pdf-lib to avoid SSR issues
+            const { PDFDocument } = await import('pdf-lib');
 
-            // Call API
-            const response = await fetch('/api/parse-pdf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ file: base64File, apiKey, geminiModel })
-            });
+            // Load the PDF
+            const arrayBuffer = await file.arrayBuffer();
+            const pdfDoc = await PDFDocument.load(arrayBuffer);
+            const pageCount = pdfDoc.getPageCount();
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'PDF Okunurken hata oluştu.');
+            if (pageCount === 0) throw new Error("PDF dosyası boş veya okunamadı.");
+
+            const allStudents: any[] = [];
+            let processedPages = 0;
+
+            // Process Page by Page
+            for (let i = 0; i < pageCount; i++) {
+                // Update Progress UI
+                // Update Progress UI
+                setLoading(true);
+                setProgressText(`Sayfa ${i + 1} / ${pageCount} analiz ediliyor...`);
+
+                // Extract single page
+                const newDoc = await PDFDocument.create();
+                const [copiedPage] = await newDoc.copyPages(pdfDoc, [i]);
+                newDoc.addPage(copiedPage);
+                const base64Uri = await newDoc.saveAsBase64({ dataUri: true });
+
+                // Call API for this page
+                const response = await fetch('/api/parse-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file: base64Uri, apiKey, geminiModel })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(`Sayfa ${i + 1} işlenirken hata: ${err.error || 'Bilinmeyen hata'}`);
+                }
+
+                const data = await response.json();
+
+                if (data.classes && data.classes.length > 0) {
+                    data.classes.forEach((cls: any) => {
+                        const classStudents = cls.students.map((s: any) => ({
+                            id: s.studentNo,
+                            name: s.name,
+                            y1: 0,
+                            y2: 0,
+                            p1: s.p1,
+                            p2: s.p2,
+                            schoolName: cls.metadata.schoolName,
+                            academicYear: cls.metadata.academicYear,
+                            className: cls.metadata.className,
+                            lessonName: cls.metadata.lessonName
+                        }));
+                        allStudents.push(...classStudents);
+                    });
+                }
+
+                processedPages++;
             }
 
-            const data = await response.json();
-
-
-
-            if (!data.classes || data.classes.length === 0) {
+            if (allStudents.length === 0) {
                 throw new Error("PDF'den sınıf veya öğrenci verisi okunamadı.");
             }
 
-            const allStudents: any[] = [];
-
-            // Flatten all classes
-            data.classes.forEach((cls: any) => {
-                const classStudents = cls.students.map((s: any) => ({
-                    id: s.studentNo,
-                    name: s.name,
-                    y1: 0,
-                    y2: 0,
-                    p1: s.p1,
-                    p2: s.p2,
-                    // Attach metadata to student
-                    schoolName: cls.metadata.schoolName,
-                    academicYear: cls.metadata.academicYear,
-                    className: cls.metadata.className,
-                    lessonName: cls.metadata.lessonName
-                }));
-                allStudents.push(...classStudents);
-            });
-
-            if (allStudents.length === 0) {
-                throw new Error("Öğrenci listesi boş.");
-            }
-
-            // Check for G/0/empty values and warn user
+            // Check for G/0/empty values
             const studentsWithZeroOrEmpty = allStudents.filter(s =>
                 s.p1 === 0 || s.p2 === 0 || s.p1 === null || s.p2 === null
             );
+
             if (studentsWithZeroOrEmpty.length > 0) {
                 setWarning(`Dikkat: ${studentsWithZeroOrEmpty.length} öğrencide P1 veya P2 notu 0, "G" veya boş olarak tespit edildi. Bu öğrenciler için dağıtım yapılmayacaktır.`);
-            } else {
-                setWarning(null);
             }
 
-            // Use the first class metadata for the main App Context header summary
-            const firstMeta = data.classes[0].metadata;
+            // Use the first student's metadata for summary (or the last one, doesn't matter much if consistent)
+            const firstStudent = allStudents[0];
 
             setParsedData(
                 {
-                    lessonName: firstMeta.lessonName || 'Ders',
-                    className: `${data.classes.length} Sınıf / Toplam ${allStudents.length} Öğrenci` // Show summary in header
+                    lessonName: firstStudent.lessonName || 'Ders',
+                    className: `${pageCount} Sayfa / Toplam ${allStudents.length} Öğrenci`
                 },
                 allStudents
             );
@@ -188,7 +201,7 @@ export default function Step1Upload() {
                                 <FileSpreadsheet className="h-10 w-10" />
                             )}
                             <span className="text-sm font-medium">
-                                {loading ? "Yapay Zeka PDF'i Analiz Ediyor..." : (apiKey ? "PDF dosyasını buraya sürükleyin" : "Önce API Key giriniz")}
+                                {loading ? (progressText || "Yapay Zeka PDF'i Analiz Ediyor...") : (apiKey ? "PDF dosyasını buraya sürükleyin" : "Önce API Key giriniz")}
                             </span>
                         </div>
                     </div>
