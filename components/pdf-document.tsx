@@ -7,10 +7,21 @@ import { AppConfig, Student, RubricItem } from './wizard/store';
 // For now, default fonts might have issues with 'ğ, ş, ı'. 
 // We will register a standard font.
 
+// Register a font that supports Turkish characters
+// We use local fonts to avoid network crashes/hanging during PDF generation
+Font.register({
+    family: 'Roboto',
+    fonts: [
+        { src: '/fonts/Roboto-Regular.ttf' },
+        { src: '/fonts/Roboto-Bold.ttf', fontWeight: 'bold' }
+    ]
+});
+
 const styles = StyleSheet.create({
     page: {
         padding: 15,
         paddingBottom: 50,
+        fontFamily: 'Roboto',
         fontSize: 8
     },
     header: {
