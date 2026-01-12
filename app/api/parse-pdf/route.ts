@@ -72,7 +72,12 @@ export async function POST(req: NextRequest) {
                     role: 'user',
                     content: [
                         { type: 'text', text: prompt },
-                        { type: 'file', data: base64Data, mediaType: 'application/pdf' }
+                        {
+                            type: 'image',
+                            image: Buffer.from(base64Data, 'base64'),
+                            // @ts-expect-error - Runtime Zod schema requires mimeType, though TS definition might miss it
+                            mimeType: 'application/pdf'
+                        }
                     ]
                 }
             ],
