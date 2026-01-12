@@ -8,42 +8,16 @@ import { AppConfig, Student, RubricItem } from './wizard/store';
 // We will register a standard font.
 
 // Register a font that supports Turkish characters
-// We use local fonts to avoid network crashes/hanging during PDF generation
-const registerFonts = () => {
-    if (typeof window !== 'undefined') {
-        const origin = window.location.origin;
-        Font.register({
-            family: 'Roboto',
-            fonts: [
-                { src: `${origin}/fonts/Roboto-Regular.ttf` },
-                { src: `${origin}/fonts/Roboto-Bold.ttf`, fontWeight: 'bold' }
-            ]
-        });
-    } else {
-        // Fallback or server-side stub? 
-        // React-PDF client side rendering usually happens in browser.
-        // We can register relative path for standard cases
-        Font.register({
-            family: 'Roboto',
-            fonts: [
-                { src: '/fonts/Roboto-Regular.ttf' },
-                { src: '/fonts/Roboto-Bold.ttf', fontWeight: 'bold' }
-            ]
-        });
-    }
-};
+// TEMPORARY: Disabled custom font to debug crash. Using standard Helvetica.
+// const registerFonts = () => { ... } 
 
-try {
-    registerFonts();
-} catch (e) {
-    console.error("Font registration failed:", e);
-}
+// try { registerFonts(); } catch (e) { ... }
 
 const styles = StyleSheet.create({
     page: {
         padding: 15,
         paddingBottom: 50,
-        fontFamily: 'Roboto',
+        fontFamily: 'Helvetica', // Standard PDF font, reliable
         fontSize: 8
     },
     header: {

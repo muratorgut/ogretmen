@@ -37,13 +37,20 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
     render() {
         if (this.state.hasError) {
+            const err = this.state.error;
+            let errorMessage = "Bilinmeyen Hata";
+
+            if (err) {
+                if (typeof err === 'string') errorMessage = err;
+                else if (err instanceof Error) errorMessage = err.message + '\n' + err.stack;
+                else try { errorMessage = JSON.stringify(err, Object.getOwnPropertyNames(err), 2); } catch (e) { errorMessage = String(err); }
+            }
+
             return (
-                <div className="p-4 border border-red-200 bg-red-50 text-red-700 rounded text-sm overflow-auto">
+                <div className="p-4 border border-red-200 bg-red-50 text-red-700 rounded text-sm overflow-auto max-h-[300px]">
                     <p className="font-bold">PDF Oluşturma Hatası:</p>
-                    <pre className="mt-1 text-xs whitespace-pre-wrap">
-                        {this.state.error instanceof Error
-                            ? `${this.state.error.name}: ${this.state.error.message}\n${this.state.error.stack}`
-                            : JSON.stringify(this.state.error, null, 2)}
+                    <pre className="mt-1 text-xs whitespace-pre-wrap font-mono">
+                        {errorMessage}
                     </pre>
                 </div>
             );
