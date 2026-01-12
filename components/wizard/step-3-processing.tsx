@@ -13,58 +13,78 @@ export default function Step3Processing() {
     const { step, setStep, students, config, meta, updateStudentScores, apiKey, geminiModel } = useAppStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [progress, setProgress] = useState(0);
 
     if (step !== 3) return null;
 
     const handleProcess = async () => {
         setLoading(true);
         setError(null);
+        setProgress(0);
 
         try {
-            const response = await fetch('/api/distribute', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    apiKey,
-                    geminiModel,
-                    lessonName: meta.lessonName,
-                    className: meta.className,
-                    roundingRule: config.roundingRule,
-                    rubricsP1: config.rubricsP1,
-                    rubricsP2: config.rubricsP2,
-                    students: students.map(s => ({
-                        id: s.id,
-                        name: s.name,
-                        y1: s.y1,
-                        y2: s.y2,
-                        p1: s.p1,
-                        p2: s.p2
-                    }))
-                }),
-            });
+            // Client-side batching to avoid Vercel Timeouts
+            // We use a safe batch size (e.g. 20) to ensure each request finishes <10s
+            const BATCH_SIZE = 20;
+            const totalStudents = students.length;
+            let processedCount = 0;
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'İşlem başarısız oldu.');
+            for (let i = 0; i < totalStudents; i += BATCH_SIZE) {
+                const chunk = students.slice(i, i + BATCH_SIZE);
+
+                // Prepare chunk data
+                const chunkPayload = chunk.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    y1: s.y1,
+                    y2: s.y2,
+                    p1: s.p1,
+                    p2: s.p2
+                }));
+
+                const response = await fetch('/api/distribute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        apiKey,
+                        geminiModel,
+                        lessonName: meta.lessonName,
+                        className: meta.className,
+                        roundingRule: config.roundingRule,
+                        rubricsP1: config.rubricsP1,
+                        rubricsP2: config.rubricsP2,
+                        students: chunkPayload
+                    }),
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || `Batch ${i / BATCH_SIZE + 1} başarısız oldu.`);
+                }
+
+                const data = await response.json();
+
+                // Update Store immediately with this batch's results
+                data.distributions.forEach((d: any) => {
+                    const scores: Record<string, number> = {};
+                    d.p1_scores.forEach((item: any) => scores[item.rubricId] = item.score);
+                    d.p2_scores.forEach((item: any) => scores[item.rubricId] = item.score);
+
+                    updateStudentScores(d.studentId, scores);
+                });
+
+                processedCount += chunk.length;
+                setProgress(Math.round((processedCount / totalStudents) * 100));
             }
 
-            const data = await response.json();
-
-            // Update Store
-            data.distributions.forEach((d: any) => {
-                const scores: Record<string, number> = {};
-                d.p1_scores.forEach((item: any) => scores[item.rubricId] = item.score);
-                d.p2_scores.forEach((item: any) => scores[item.rubricId] = item.score);
-
-                updateStudentScores(d.studentId, scores);
-            });
-
+            // All batches done
             setStep(4);
 
         } catch (err: any) {
-            setError(err.message);
+            console.error(err);
+            setError(err.message || "İşlem sırasında beklenmedik bir hata oluştu.");
         } finally {
             setLoading(false);
         }
@@ -79,11 +99,20 @@ export default function Step3Processing() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <p className="text-center text-red-600 font-bold text-lg uppercase">
-                    DAĞITIM ÖĞRENCİ SAYISINA GÖRE 5 DAKİKA KADAR SÜREBİLİR!
-                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <p className="font-bold text-blue-800">
+                        {loading ? `İşleniyor: %${progress}` : "İşlemeye Hazır"}
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                        Uzun listeler parçalar halinde işlenir. Lütfen bekleyiniz.
+                    </p>
+                </div>
 
-                {/* API Key input removed - Moved to Step 1 */}
+                {loading && (
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                        <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                    </div>
+                )}
 
                 {error && (
                     <Alert variant="destructive">
@@ -100,7 +129,7 @@ export default function Step3Processing() {
                 <Button onClick={handleProcess} disabled={loading} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg">
                     {loading ? (
                         <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Dağıtılıyor...
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {progress}% Tamamlandı
                         </>
                     ) : (
                         <>

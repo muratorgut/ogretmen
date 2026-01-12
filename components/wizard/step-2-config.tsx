@@ -180,7 +180,7 @@ function RubricTabContent({ type, titleValue, onTitleChange, items, currentTotal
                                 {idx + 1}
                             </div>
                             <div className="flex-1 space-y-3">
-                                <div className="flex gap-4">
+                                <div className="flex flex-col sm:flex-row gap-4">
                                     <div className="flex-1">
                                         <Label className="text-xs">Kriter Adı</Label>
                                         <Input
@@ -189,7 +189,7 @@ function RubricTabContent({ type, titleValue, onTitleChange, items, currentTotal
                                             placeholder="Örn: Derse hazırlıklı gelme"
                                         />
                                     </div>
-                                    <div className="w-24">
+                                    <div className="w-full sm:w-24">
                                         <Label className="text-xs">Max Puan</Label>
                                         <Input
                                             type="number"
