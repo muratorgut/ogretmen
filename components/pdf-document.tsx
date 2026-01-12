@@ -8,16 +8,41 @@ import { AppConfig, Student, RubricItem } from './wizard/store';
 // We will register a standard font.
 
 // Register a font that supports Turkish characters
-// TEMPORARY: Disabled custom font to debug crash. Using standard Helvetica.
-// const registerFonts = () => { ... } 
+// Register a font that supports Turkish characters
+// We use local fonts to avoid network crashes/hanging during PDF generation
+const registerFonts = () => {
+    if (typeof window !== 'undefined') {
+        const origin = window.location.origin;
+        Font.register({
+            family: 'Roboto',
+            fonts: [
+                { src: `${origin}/fonts/Roboto-Regular.ttf` },
+                { src: `${origin}/fonts/Roboto-Bold.ttf`, fontWeight: 'bold' }
+            ]
+        });
+    } else {
+        // Fallback for non-browser env (rarely hit in this flow but good practice)
+        Font.register({
+            family: 'Roboto',
+            fonts: [
+                { src: '/fonts/Roboto-Regular.ttf' },
+                { src: '/fonts/Roboto-Bold.ttf', fontWeight: 'bold' }
+            ]
+        });
+    }
+};
 
-// try { registerFonts(); } catch (e) { ... }
+try {
+    registerFonts();
+} catch (e) {
+    console.error("Font registration failed:", e);
+}
 
 const styles = StyleSheet.create({
     page: {
         padding: 15,
         paddingBottom: 50,
-        fontFamily: 'Helvetica', // Standard PDF font, reliable
+        fontFamily: 'Roboto',
         fontSize: 8
     },
     header: {
