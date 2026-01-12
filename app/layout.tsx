@@ -28,6 +28,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <div className="fixed bottom-2 right-4 text-xs text-gray-400">
+          Murat ÖRGÜT
+        </div>
       </body>
     </html>
   );
