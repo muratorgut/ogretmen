@@ -1,4 +1,4 @@
 {
     "framework": "nextjs",
-    "installCommand": "rm -rf node_modules .next package-lock.json && npm install next@14.2.16 react@18.3.1 react-dom@18.3.1 && npm install"
+    "installCommand": "rm -rf node_modules .next package-lock.json && npm install next@14.2.16 react@18.3.1 react-dom@18.3.1 --legacy-peer-deps && npm install --legacy-peer-deps"
 }
