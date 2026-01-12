@@ -40,7 +40,8 @@ try {
 
 const styles = StyleSheet.create({
     page: {
-        padding: 15,
+        paddingTop: 40,
+        paddingHorizontal: 15,
         paddingBottom: 50,
         fontFamily: 'Roboto',
         fontSize: 8
