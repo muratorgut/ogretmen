@@ -1,0 +1,47 @@
+[33me916289[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m UI Fix: Align TOPLAM column header height to 100px
+[33md48782f[m UI Fix: Revert PDF top margin, increase header spacing and row height
+[33mbae4896[m UI Fix: Increase PDF top padding (40 -> 70)
+[33m0977082[m UI Simplification: Step 4 cleaned up, removal of Excel and Tabs
+[33ma8a2727[m Feature: Class Selection UI after PDF Upload
+[33mc4b94ce[m UI Polish: Show clean Student No in PDF instead of composite ID
+[33m50cac4e[m Fix Data Duplication: Unique IDs, Lesson Grouping, and Strict Context Prompt
+[33mea62e21[m Adjust PDF Top Margin: Increase top padding to 40px for better spacing
+[33m14cf055[m Implement Page-by-Page PDF Parsing with Client-Side Splitting (Fixes Timeout for Large Files)
+[33meb6c60b[m Polish Mobile UI: Vertical Tabs and Multiline Criteria Input
+[33md3bd02f[m Fix UI & Timeout: Stack inputs on mobile + Implement Client-Side Batching (20/req)
+[33m2b579fd[m Final Polish: Remove default API key, update help text, cancel Supabase tasks
+[33m5bd3f77[m Fix PDF Fonts: Enable Roboto with correct absolute URLs for browser environment
+[33mfd0bc90[m Fix PDF Silence: Switch to manual blob generation to force error visibility and control
+[33m6c9c5c8[m Fix PDF Crash: Revert to Helvetica font to debug loading issues + Enhance Error Reporting
+[33m3033194[m Enhance PDF Debugging: Show full error stack and try absolute font paths
+[33m5e76158[m Add ErrorBoundary to PdfDownloadButton to debug silent crash
+[33m30bb7ca[m Fix PDF Fonts: Download Roboto locally to public/fonts to ensure TR char support without crashes
+[33m9f10f90[m Fix PDF Crash: Remove custom font registration causing potential CORS/Loading issues
+[33m0a8f695[m Fix White Screen Crash: Implement lazy/on-demand PDF generation to prevent render blocking
+[33medc35bb[m Security Fix: Remove leaked API key from source code
+[33mb67d9de[m Fix PDF parsing: Use 'image' part with Buffer instead of 'file' part to satisfy SDK validation
+[33mefec6da[m Fix TypeScript build error: Explicitly install @types/react and @types/react-dom
+[33mc2069eb[m Fix final build error: Remove opacity modifier from outline-ring class in globals.css
+[33m000ebde[m Add tailwind.config.js to define theme colors for v3, fixing build error
+[33m3ffbefc[m Fix CSS syntax: Convert legacy globals.css to standard Tailwind v3 format
+[33mbeca56d[m Fix font build error: Replace Next.js 15 Geist font with Next.js 14 Inter font
+[33m9f9ac0b[m Fix dependency conflicts: Downgrade Zod to v3 and use legacy-peer-deps
+[33mf21055f[m Aggressive cleanup: wipe node_modules/.next, force Next 14 install, switch to ESLint 8 json config
+[33m062b946[m Hard Reset: Standardize on Next.js 14, React 18, and CommonJS config
+[33m9c7e3aa[m Force clean install on Vercel to purge stale Next.js 16 cache
+[33m439c3c6[m Downgrade Tailwind to stable v3.4.17 to fix WorkerError
+[33mf67db51[m Downgrade to Next.js 14 and React 18 for Vercel stability
+[33med520e0[m Refactor PDF download button to use dynamic imports for react-pdf
+[33m7606883[m Disable linting and TS checks during build to prevent WorkerError
+[33m4c6c2cc[m Remove package-lock.json to force dependency update on Vercel
+[33mda15e98[m Configure robust webpack build for react-pdf on Next.js 15
+[33m4e5ed95[m Add serverExternalPackages for react-pdf
+[33md14a3c6[m Remove webpack config and test minimal config
+[33m16b685d[m Add empty turbopack config to fix build error
+[33mb73cecd[m Downgrade to Next.js 15 to fix Turbopack build issues
+[33m2f7a26a[m Add vercel.json and optimize react-pdf config
+[33mec09c37[m Force webpack mode for build
+[33m94cc84b[m Use Turbopack native config
+[33mcd34573[m Fix Turbopack build error
+[33me68a32d[m Initial commit - Performans Notu Dağıtıcı
+[33m01f0965[m Initial commit from Create Next App
