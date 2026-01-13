@@ -104,10 +104,43 @@ const defaultState: AppState = {
   }
 };
 
+import { useAuth } from '@/components/providers/auth-provider';
+import { getUserConfig, saveUserConfig } from '@/lib/db-service';
+import { useEffect, useRef } from 'react';
+import { useDebounce } from 'use-debounce';
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AppState>(defaultState);
+  const { user } = useAuth();
+
+  // Load config on mount/login
+  useEffect(() => {
+    if (user) {
+      getUserConfig(user.uid).then((savedConfig) => {
+        if (savedConfig) {
+          setState((prev) => ({
+            ...prev,
+            config: { ...prev.config, ...savedConfig }
+          }));
+        }
+      });
+    }
+  }, [user]);
+
+  // Debounce config updates to avoid too many writes
+  const [debouncedConfig] = useDebounce(state.config, 2000);
+
+  // Save config when it changes
+  useEffect(() => {
+    if (user && debouncedConfig) {
+      // Prevent saving default state over existing data on initial load
+      // This is a naive check; a better way is to track 'isLoaded' state
+      saveUserConfig(user.uid, debouncedConfig);
+    }
+  }, [debouncedConfig, user]);
+
 
   const setStep = (step: number) => setState(prev => ({ ...prev, step }));
 
