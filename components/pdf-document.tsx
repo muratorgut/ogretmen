@@ -40,14 +40,14 @@ try {
 
 const styles = StyleSheet.create({
     page: {
-        paddingTop: 70,
+        paddingTop: 40,
         paddingHorizontal: 15,
         paddingBottom: 50,
         fontFamily: 'Roboto',
         fontSize: 8
     },
     header: {
-        marginBottom: 8,
+        marginBottom: 25,
         textAlign: 'center',
         fontWeight: 'bold'
     },
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
         borderColor: '#000',
         backgroundColor: '#fff',
         padding: 1,
-        height: 80,
+        height: 100,
         justifyContent: 'center',
         alignItems: 'center'
     },
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 2,
-        height: 80
+        height: 100
     },
     tableCol: {
         width: '12%',
