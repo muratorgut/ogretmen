@@ -62,6 +62,21 @@ export default function LoginPage() {
                         </span>
                         Apple ile Giriş Yap
                     </button>
+
+                    <button
+                        onClick={useAuth().signInWithMicrosoft}
+                        className="group relative flex w-full justify-center rounded-md border border-gray-300 bg-white py-3 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#00a4ef] focus:ring-offset-2"
+                    >
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <svg className="h-5 w-5" viewBox="0 0 23 23" fill="none">
+                                <path fill="#f35325" d="M1 1h10v10H1z" />
+                                <path fill="#81bc06" d="M12 1h10v10H12z" />
+                                <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                                <path fill="#ffba08" d="M12 12h10v10H12z" />
+                            </svg>
+                        </span>
+                        Microsoft ile Giriş Yap
+                    </button>
                     <div className="text-center text-xs text-gray-500">
                         * Kişisel verileriniz cihazınızda işlenir
                     </div>
