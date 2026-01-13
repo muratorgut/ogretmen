@@ -83,7 +83,8 @@ export default function Step1Upload() {
                 if (data.classes && data.classes.length > 0) {
                     data.classes.forEach((cls: any) => {
                         const classStudents = cls.students.map((s: any) => ({
-                            id: s.studentNo,
+                            // Create a composite unique ID to allow same student in multiple lessons
+                            id: `${s.studentNo}-${cls.metadata.lessonName}-${cls.metadata.className}`.replace(/\s+/g, '_'),
                             name: s.name,
                             y1: 0,
                             y2: 0,

@@ -78,20 +78,25 @@ export async function POST(req: NextRequest) {
             }
 
             const prompt = `
-          You are an expert educational assistant.
-          Your task is to distribute the Total Performance Grade (P1 and P2) for ${chunk.length} students into specific rubric criteria scores.
+          You are an expert educational assistant specializing in grade distribution. 
           
-          Class: ${className}
-          Lesson: ${lessonName}
-          Rounding Rule: Quotes must be multiples of ${roundingRule}.
+          CRITICAL MISSION: 
+          You are processing data for a SPECIFIC class and a SPECIFIC lesson. 
+          Current Context: 
+          - Class: ${className}
+          - Lesson: ${lessonName} 
           
-          RUBRIC P1 CONFIGURATION (${rubricsP1.length} criteria - YOU MUST PROVIDE SCORES FOR ALL ${rubricsP1.length} CRITERIA):
+          IMPORTANT: Even if the students are the same as in a previous task, the grade distributions for this SPECIFIC lesson (${lessonName}) must be unique and based ONLY on the target grades provided below. DO NOT reuse distribution patterns from other lessons.
+          
+          Rounding Rule: Scores must be multiples of ${roundingRule}.
+          
+          RUBRIC P1 CONFIGURATION (For ${lessonName}):
           ${rubricsP1.map((r, i) => `${i + 1}. ID: "${r.id}", Label: "${r.label}", Max: ${r.maxScore}`).join('\n')}
           
-          RUBRIC P2 CONFIGURATION (${rubricsP2.length} criteria - YOU MUST PROVIDE SCORES FOR ALL ${rubricsP2.length} CRITERIA):
+          RUBRIC P2 CONFIGURATION (For ${lessonName}):
           ${rubricsP2.map((r, i) => `${i + 1}. ID: "${r.id}", Label: "${r.label}", Max: ${r.maxScore}`).join('\n')}
           
-          STUDENTS DATA:
+          STUDENTS DATA FOR ${lessonName}:
           ${JSON.stringify(chunk.map(s => ({
                 id: s.id,
                 name: s.name,
@@ -99,14 +104,16 @@ export async function POST(req: NextRequest) {
                 Targets: { P1: s.p1, P2: s.p2 }
             })), null, 2)}
           
-          CRITICAL RULES:
-          1. COMPLETENESS: For EACH student, you MUST return scores for ALL ${rubricsP1.length} P1 rubrics (IDs: ${rubricsP1.map(r => r.id).join(', ')}) AND ALL ${rubricsP2.length} P2 rubrics (IDs: ${rubricsP2.map(r => r.id).join(', ')}). Missing rubric scores are NOT ALLOWED.
-          2. Mathematical Precision: For each student, the sum of all P1 rubric scores MUST EXACTLY equal their Target P1. Same for P2.
-          3. Rounding: Each individual rubric score must be a multiple of ${roundingRule} if possible.
-          4. Diversity: Students with the same target grades MUST have different rubric breakdowns. Vary how points are distributed across ALL criteria.
+          STRICT MATHEMATICAL RULES:
+          1. PER-STUDENT UNIQUE IDENTITY: For each student, you MUST calculate scores based on their specific Target P1 and Target P2 for THIS lesson.
+          2. TOTAL SUM CHECK: The sum of rubric scores for P1 MUST exactly equal the student's Target P1. The same applies to P2.
+          3. NO COPY-PASTING: Even if two students have the same total grade (e.g., both 90), their rubric breakdowns must be DIFFERENT to ensure authenticity.
+          4. INDEPENDENT LESSON LOGIC: If you are processing multiple lessons in one session, ensure the 'Lesson Name' in your output matches the input exactly and the scores are not carried over from the previous lesson.
           5. Constraints: No individual rubric score can exceed its Max Score. Minimum score is 0.
           
-          IMPORTANT: Your p1_scores array MUST contain exactly ${rubricsP1.length} items. Your p2_scores array MUST contain exactly ${rubricsP2.length} items.
+          OUTPUT FORMAT:
+          Return a JSON object with a 'distributions' array. Each item must contain 'studentId', 'p1_scores' (array of rubricId/score), and 'p2_scores' (array of rubricId/score).
+          YOUR p1_scores array MUST contain exactly ${rubricsP1.length} items. Your p2_scores array MUST contain exactly ${rubricsP2.length} items.
         `;
 
             try {
