@@ -4,7 +4,8 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 // Types
 export interface Student {
-  id: string; // Öğrenci No
+  id: string; // Benzersiz ID (Composite: No-Lesson-Class)
+  studentNo?: string; // Gerçek Öğrenci Numarası (Görüntüleme için)
   name: string;
   y1?: number; // Yazılı 1
   y2?: number; // Yazılı 2

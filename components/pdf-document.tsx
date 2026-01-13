@@ -220,7 +220,7 @@ const PerformancePage = ({ students, config, meta, type }: { students: Student[]
                             return (
                                 <View key={student.id} style={styles.tableRow}>
                                     <View style={[styles.tableColName, { width: `${NAME_COL_WIDTH}%` }]}>
-                                        <Text style={styles.nameText}>{student.id} - {student.name}</Text>
+                                        <Text style={styles.nameText}>{student.studentNo || student.id} - {student.name}</Text>
                                     </View>
                                     {rubrics.map((r) => (
                                         <View key={r.id} style={[styles.tableCol, { width: `${criteriaColWidth}%` }]}>

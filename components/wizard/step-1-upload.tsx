@@ -85,6 +85,7 @@ export default function Step1Upload() {
                         const classStudents = cls.students.map((s: any) => ({
                             // Create a composite unique ID to allow same student in multiple lessons
                             id: `${s.studentNo}-${cls.metadata.lessonName}-${cls.metadata.className}`.replace(/\s+/g, '_'),
+                            studentNo: s.studentNo, // Keep raw number for display
                             name: s.name,
                             y1: 0,
                             y2: 0,
