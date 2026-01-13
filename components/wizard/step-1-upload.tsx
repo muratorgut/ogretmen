@@ -29,10 +29,8 @@ export default function Step1Upload() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (!apiKey) {
-            setError("Lütfen önce API Anahtarınızı giriniz.");
-            return;
-        }
+        // Optional check: if apiKey is empty, we assume backend env var is set
+        // if (!apiKey) { ... } -> Removed mandatory check
 
         // Save to global store
         setStoreApiKey(apiKey);
@@ -77,6 +75,10 @@ export default function Step1Upload() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ file: base64Uri, apiKey, geminiModel })
                 });
+
+                if (response.status === 401) {
+                    throw new Error("API Key hatası. Lütfen geçerli bir anahtar girin veya sistem yöneticisine başvurun.");
+                }
 
                 if (!response.ok) {
                     const err = await response.json();
@@ -213,7 +215,6 @@ export default function Step1Upload() {
                 <CardTitle>e-Okul PDF Yükle</CardTitle>
                 <CardDescription>
                     e-Okul sisteminden indirdiğiniz "Puan Çizelgesi" PDF dosyasını buraya yükleyin.
-                    Gemini modelini seçin ve API Anahtarınızı girin.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -239,32 +240,32 @@ export default function Step1Upload() {
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="apiKey">Google Gemini API Key</Label>
+                    <Label htmlFor="apiKey">Google Gemini API Key (Opsiyonel)</Label>
                     <Input
                         id="apiKey"
                         type="password"
-                        placeholder="AIzaSy..."
+                        placeholder="Boş bırakılırsa sistem anahtarı kullanılır"
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
                         onCopy={(e) => e.preventDefault()}
                         onCut={(e) => e.preventDefault()}
                         autoComplete="off"
                     />
-                    <p className="text-xs text-muted-foreground">PDF analizi için gereklidir. (Kendi anahtarınızı giriniz)</p>
+                    <p className="text-xs text-muted-foreground">Eğer kendi anahtarınızı kullanmak istiyorsanız buraya girin.</p>
                 </div>
 
                 <div className="grid w-full items-center gap-1.5">
                     <Label htmlFor="file" className="text-lg font-semibold mb-2">
                         PDF Dosyası
                     </Label>
-                    <div className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg transition-colors relative ${!apiKey ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer hover:bg-muted/50'}`}>
+                    <div className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg transition-colors relative cursor-pointer hover:bg-muted/50`}>
                         <Input
                             id="file"
                             type="file"
                             accept=".pdf"
                             className="w-full h-full opacity-0 absolute z-10 cursor-pointer"
                             onChange={handleFileChange}
-                            disabled={loading || !apiKey}
+                            disabled={loading}
                         />
                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
                             {loading ? (
@@ -273,7 +274,7 @@ export default function Step1Upload() {
                                 <FileSpreadsheet className="h-10 w-10" />
                             )}
                             <span className="text-sm font-medium">
-                                {loading ? (progressText || "Yapay Zeka PDF'i Analiz Ediyor...") : (apiKey ? "PDF dosyasını buraya sürükleyin" : "Önce API Key giriniz")}
+                                {loading ? (progressText || "Yapay Zeka PDF'i Analiz Ediyor...") : "PDF dosyasını buraya sürükleyin"}
                             </span>
                         </div>
                     </div>

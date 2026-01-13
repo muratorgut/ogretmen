@@ -25,14 +25,14 @@ const RequestSchema = z.object({
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { file, apiKey, geminiModel } = RequestSchema.parse(body);
+        const token = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-        if (!apiKey) {
+        if (!token) {
             return NextResponse.json({ error: 'API Key Missing' }, { status: 401 });
         }
 
         const google = createGoogleGenerativeAI({
-            apiKey: apiKey,
+            apiKey: token,
         });
 
         // Extract raw base64 data if it has a prefix
