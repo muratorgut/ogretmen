@@ -205,7 +205,7 @@ const PerformancePage = ({ students, config, meta, type }: { students: Student[]
                                     </View>
                                 </View>
                             ))}
-                            <View style={[styles.tableColTotal, { width: `${TOTAL_COL_WIDTH}%`, height: 80, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }]}>
+                            <View style={[styles.tableColTotal, { width: `${TOTAL_COL_WIDTH}%`, height: 100, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }]}>
                                 <View style={{ transform: 'rotate(-90deg)', width: 75, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <Text style={{ fontSize: 7, fontWeight: 'bold' }}>TOPLAM</Text>
                                 </View>
