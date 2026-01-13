@@ -20,6 +20,11 @@ export default function Step1Upload() {
     const [geminiModel, setGeminiModel] = useState<GeminiModel>(storeGeminiModel || 'gemini-3-flash-preview');
     const [progressText, setProgressText] = useState<string>("");
 
+    // Intermediate state for class selection
+    const [parsedGroups, setParsedGroups] = useState<any[]>([]); // To store raw parsed classes
+    const [selectedGroupIndices, setSelectedGroupIndices] = useState<number[]>([]); // To store selected indices
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -36,6 +41,8 @@ export default function Step1Upload() {
         setLoading(true);
         setError(null);
         setWarning(null);
+        setParsedGroups([]);
+        setIsSelectionMode(false);
 
         try {
             setFile(file);
@@ -50,13 +57,11 @@ export default function Step1Upload() {
 
             if (pageCount === 0) throw new Error("PDF dosyası boş veya okunamadı.");
 
-            const allStudents: any[] = [];
+            const tempGroups: any[] = [];
             let processedPages = 0;
 
             // Process Page by Page
             for (let i = 0; i < pageCount; i++) {
-                // Update Progress UI
-                // Update Progress UI
                 setLoading(true);
                 setProgressText(`Sayfa ${i + 1} / ${pageCount} analiz ediliyor...`);
 
@@ -81,51 +86,21 @@ export default function Step1Upload() {
                 const data = await response.json();
 
                 if (data.classes && data.classes.length > 0) {
-                    data.classes.forEach((cls: any) => {
-                        const classStudents = cls.students.map((s: any) => ({
-                            // Create a composite unique ID to allow same student in multiple lessons
-                            id: `${s.studentNo}-${cls.metadata.lessonName}-${cls.metadata.className}`.replace(/\s+/g, '_'),
-                            studentNo: s.studentNo, // Keep raw number for display
-                            name: s.name,
-                            y1: 0,
-                            y2: 0,
-                            p1: s.p1,
-                            p2: s.p2,
-                            schoolName: cls.metadata.schoolName,
-                            academicYear: cls.metadata.academicYear,
-                            className: cls.metadata.className,
-                            lessonName: cls.metadata.lessonName
-                        }));
-                        allStudents.push(...classStudents);
-                    });
+                    tempGroups.push(...data.classes);
                 }
 
                 processedPages++;
             }
 
-            if (allStudents.length === 0) {
+            if (tempGroups.length === 0) {
                 throw new Error("PDF'den sınıf veya öğrenci verisi okunamadı.");
             }
 
-            // Check for G/0/empty values
-            const studentsWithZeroOrEmpty = allStudents.filter(s =>
-                s.p1 === 0 || s.p2 === 0 || s.p1 === null || s.p2 === null
-            );
-
-            if (studentsWithZeroOrEmpty.length > 0) {
-                setWarning(`Dikkat: ${studentsWithZeroOrEmpty.length} öğrencide P1 veya P2 notu 0, "G" veya boş olarak tespit edildi. Bu öğrenciler için dağıtım yapılmayacaktır.`);
-            }
-
-            // Use the first student's metadata for summary (or the last one, doesn't matter much if consistent)
-            const firstStudent = allStudents[0];
-
-            setParsedData(
-                {
-                    lessonName: firstStudent.lessonName || 'Ders',
-                    className: `${pageCount} Sayfa / Toplam ${allStudents.length} Öğrenci`
-                },
-                allStudents
-            );
+            // Successfully parsed everything. Now Enter Selection Mode.
+            setParsedGroups(tempGroups);
+            // Default select all
+            setSelectedGroupIndices(tempGroups.map((_, idx) => idx));
+            setIsSelectionMode(true);
 
         } catch (err: any) {
             setError(err.message || "Dosya okunurken bir hata oluştu.");
@@ -135,8 +110,103 @@ export default function Step1Upload() {
         }
     };
 
+    const toggleSelection = (index: number) => {
+        setSelectedGroupIndices(prev =>
+            prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+        );
+    };
+
+    const handleConfirmSelection = () => {
+        if (selectedGroupIndices.length === 0) {
+            setError("Lütfen en az bir sınıf seçiniz.");
+            return;
+        }
+
+        const allStudents: any[] = [];
+
+        // Filter and Flatten
+        selectedGroupIndices.forEach(idx => {
+            const cls = parsedGroups[idx];
+            const classStudents = cls.students.map((s: any) => ({
+                // Create a composite unique ID to allow same student in multiple lessons
+                id: `${s.studentNo}-${cls.metadata.lessonName}-${cls.metadata.className}`.replace(/\s+/g, '_'),
+                studentNo: s.studentNo,
+                name: s.name,
+                y1: 0,
+                y2: 0,
+                p1: s.p1,
+                p2: s.p2,
+                schoolName: cls.metadata.schoolName,
+                academicYear: cls.metadata.academicYear,
+                className: cls.metadata.className,
+                lessonName: cls.metadata.lessonName
+            }));
+            allStudents.push(...classStudents);
+        });
+
+        // Check for G/0/empty values
+        const studentsWithZeroOrEmpty = allStudents.filter(s =>
+            s.p1 === 0 || s.p2 === 0 || s.p1 === null || s.p2 === null
+        );
+
+        if (studentsWithZeroOrEmpty.length > 0) {
+            setWarning(`Dikkat: Seçilen sınıflarda ${studentsWithZeroOrEmpty.length} öğrencide P1 veya P2 notu 0, "G" veya boş olarak tespit edildi.`);
+        }
+
+        const firstStudent = allStudents[0];
+        setParsedData(
+            {
+                lessonName: firstStudent.lessonName || 'Ders',
+                className: `${selectedGroupIndices.length} Sınıf / ${allStudents.length} Öğrenci`
+            },
+            allStudents
+        );
+    };
+
     if (step !== 1) return null;
 
+    // Selection Mode UI
+    if (isSelectionMode) {
+        return (
+            <Card className="w-full max-w-2xl mx-auto mt-10">
+                <CardHeader>
+                    <CardTitle>Sınıf Seçimi</CardTitle>
+                    <CardDescription>
+                        Bulunan sınıflar aşağıda listelenmiştir. Dağıtım yapmak istediklerinizi seçin.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid gap-2 max-h-[400px] overflow-y-auto pr-2">
+                        {parsedGroups.map((group, idx) => (
+                            <div key={idx}
+                                className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${selectedGroupIndices.includes(idx) ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`}
+                                onClick={() => toggleSelection(idx)}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedGroupIndices.includes(idx) ? 'bg-blue-600 border-blue-600 params-white' : 'border-gray-300'}`}>
+                                        {selectedGroupIndices.includes(idx) && <span className="text-white text-xs">✓</span>}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">{group.metadata.className} - {group.metadata.lessonName}</p>
+                                        <p className="text-xs text-muted-foreground">{group.students.length} Öğrenci</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button variant="outline" onClick={() => { setIsSelectionMode(false); setParsedGroups([]); }}>İptal / Yeni Yükle</Button>
+                        <Button onClick={handleConfirmSelection} disabled={selectedGroupIndices.length === 0}>
+                            Seçilenleri Onayla ({selectedGroupIndices.length})
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    // Default Upload UI
     return (
         <Card className="w-full max-w-2xl mx-auto mt-10">
             <CardHeader>
