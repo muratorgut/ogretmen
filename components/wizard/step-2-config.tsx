@@ -105,14 +105,14 @@ export default function Step2Config() {
             </CardHeader>
 
             <CardContent>
-                <div className="flex justify-between items-center mb-6">
-                    <div className="space-y-1">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-6">
+                    <div className="space-y-1 w-full sm:w-auto">
                         <Label>Yuvarlama Kuralı</Label>
                         <Select
                             value={String(localConfig.roundingRule)}
                             onValueChange={(v) => setLocalConfig({ ...localConfig, roundingRule: Number(v) as 1 | 5 | 10 })}
                         >
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-full sm:w-[180px]">
                                 <SelectValue placeholder="Seçiniz" />
                             </SelectTrigger>
                             <SelectContent>
@@ -130,7 +130,7 @@ export default function Step2Config() {
                                 setLocalConfig(defaultConfig);
                             }
                         }}
-                        className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-200"
+                        className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-200 w-full sm:w-auto"
                     >
                         <RefreshCcw className="w-4 h-4 mr-2" />
                         Varsayılan Ayarları Yükle
