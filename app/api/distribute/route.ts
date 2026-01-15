@@ -19,7 +19,7 @@ const GeminiModelSchema = z.enum([
 
 const RequestSchema = z.object({
     apiKey: z.string().optional(),
-    geminiModel: GeminiModelSchema.optional().default('gemini-3-flash-preview'),
+    geminiModel: GeminiModelSchema.optional().default('gemini-2.0-flash'),
     lessonName: z.string(),
     className: z.string(),
     roundingRule: z.number(),
@@ -40,8 +40,10 @@ const RequestSchema = z.object({
         name: z.string(),
         y1: z.number().optional(),
         y2: z.number().optional(),
-        p1: z.number().optional(), // Target P1
-        p2: z.number().optional()  // Target P2
+        p1: z.number().optional(),
+        p2: z.number().optional(),
+        distributeP1: z.boolean().optional(),
+        distributeP2: z.boolean().optional()
     }))
 });
 
@@ -59,8 +61,6 @@ export async function POST(req: NextRequest) {
             apiKey: token,
         });
 
-        // Batch students to avoid output token limits and timeouts
-        // 40 students per batch matches a typical class size and reduces RPM hits
         const BATCH_SIZE = 40;
         const studentChunks = [];
         for (let i = 0; i < students.length; i += BATCH_SIZE) {
@@ -70,9 +70,7 @@ export async function POST(req: NextRequest) {
         const distributions: any[] = [];
         let lastError: any = null;
 
-        // Process batches sequentially to ensure stability
         for (const chunk of studentChunks) {
-            // Add a small delay to avoid hitting rate limits (RPM)
             if (distributions.length > 0) {
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
@@ -82,42 +80,47 @@ export async function POST(req: NextRequest) {
           
           CRITICAL MISSION: 
           You are processing data for a SPECIFIC class and a SPECIFIC lesson. 
-          Current Context: 
           - Class: ${className}
           - Lesson: ${lessonName} 
           
-          IMPORTANT: Even if the students are the same as in a previous task, the grade distributions for this SPECIFIC lesson (${lessonName}) must be unique and based ONLY on the target grades provided below. DO NOT reuse distribution patterns from other lessons.
-          
           Rounding Rule: Scores must be multiples of ${roundingRule}.
           
-          RUBRIC P1 CONFIGURATION (For ${lessonName}):
+          RUBRIC P1 CONFIGURATION:
           ${rubricsP1.map((r, i) => `${i + 1}. ID: "${r.id}", Label: "${r.label}", Max: ${r.maxScore}`).join('\n')}
           
-          RUBRIC P2 CONFIGURATION (For ${lessonName}):
+          RUBRIC P2 CONFIGURATION:
           ${rubricsP2.map((r, i) => `${i + 1}. ID: "${r.id}", Label: "${r.label}", Max: ${r.maxScore}`).join('\n')}
           
-          STUDENTS DATA FOR ${lessonName}:
-          ${JSON.stringify(chunk.map(s => ({
-                id: s.id,
-                name: s.name,
-                WrittenExams: [s.y1, s.y2],
-                Targets: { P1: s.p1, P2: s.p2 }
-            })), null, 2)}
+          STUDENTS DATA:
+          ${JSON.stringify(chunk.map(s => {
+                const processP1 = s.distributeP1 !== false;
+                const processP2 = s.distributeP2 !== false;
+                return {
+                    id: s.id,
+                    name: s.name,
+                    WrittenExams: [s.y1, s.y2],
+                    Targets: {
+                        P1: processP1 ? s.p1 : null,
+                        P2: processP2 ? s.p2 : null
+                    },
+                    ProcessP1: processP1,
+                    ProcessP2: processP2
+                };
+            }), null, 2)}
           
-          STRICT MATHEMATICAL RULES:
-          1. PER-STUDENT UNIQUE IDENTITY: For each student, you MUST calculate scores based on their specific Target P1 and Target P2 for THIS lesson.
-          2. TOTAL SUM CHECK: The sum of rubric scores for P1 MUST exactly equal the student's Target P1. The same applies to P2.
-          3. NO COPY-PASTING: Even if two students have the same total grade (e.g., both 90), their rubric breakdowns must be DIFFERENT to ensure authenticity.
-          4. INDEPENDENT LESSON LOGIC: If you are processing multiple lessons in one session, ensure the 'Lesson Name' in your output matches the input exactly and the scores are not carried over from the previous lesson.
-          5. Constraints: No individual rubric score can exceed its Max Score. Minimum score is 0.
+          STRICT RULES:
+          1. Check 'ProcessP1' and 'ProcessP2' flags for each student.
+          2. IF ProcessP1 is TRUE: Provide a distribution for P1 where sum of rubrics equals Target P1.
+          3. IF ProcessP1 is FALSE: Return an empty array [] for p1_scores.
+          4. IF ProcessP2 is TRUE: Provide a distribution for P2 where sum of rubrics equals Target P2.
+          5. IF ProcessP2 is FALSE: Return an empty array [] for p2_scores.
+          6. No individual rubric score can exceed its Max Score.
           
           OUTPUT FORMAT:
-          Return a JSON object with a 'distributions' array. Each item must contain 'studentId', 'p1_scores' (array of rubricId/score), and 'p2_scores' (array of rubricId/score).
-          YOUR p1_scores array MUST contain exactly ${rubricsP1.length} items. Your p2_scores array MUST contain exactly ${rubricsP2.length} items.
+          Return a JSON object with a 'distributions' array. Each item must contain 'studentId', 'p1_scores', and 'p2_scores'.
         `;
 
             try {
-                // Use the selected Gemini model with higher temperature for variety
                 const result = await generateObject({
                     model: google(geminiModel),
                     temperature: 0.7,

@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
         fontSize: 8
     },
     header: {
-        marginBottom: 25,
+        marginBottom: 10, // Reduced from 25 to 1 line equivalent approximately
         textAlign: 'center',
         fontWeight: 'bold'
     },
@@ -171,6 +171,14 @@ const PerformancePage = ({ students, config, meta, type }: { students: Student[]
         const groupStudents = groups[groupKey];
         const firstStudent = groupStudents[0];
 
+        // CHECK: Should we generate this page type for this group?
+        // We look at the first student's preference (assuming class-wide uniformity from Step 1)
+        const shouldGenerate = type === 'P1'
+            ? (firstStudent.distributeP1 !== false)
+            : (firstStudent.distributeP2 !== false);
+
+        if (!shouldGenerate) return; // Skip this group iteration
+
         const schoolName = (firstStudent.schoolName || 'Okul Adı').toUpperCase();
         const academicYear = (firstStudent.academicYear || '2015-2016').toUpperCase();
         const className = (firstStudent.className || meta.className).toUpperCase();
@@ -238,14 +246,16 @@ const PerformancePage = ({ students, config, meta, type }: { students: Student[]
                     {/* Footer - Teacher on Left, Principal on Right */}
                     <View style={styles.footer}>
                         <View style={{ alignItems: 'center' }}>
-                            <Text style={{ fontSize: 8 }}>DERS ÖĞRETMENİ</Text>
-                            <Text style={{ fontSize: 8, marginTop: 2, fontWeight: 'bold' }}>{(config.teacherName || '...........................').toLocaleUpperCase('tr-TR')}</Text>
-                            <Text style={{ fontSize: 8 }}>{(config.teacherBranch || '...........................').toLocaleUpperCase('tr-TR')}</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{(config.teacherName || '...........................').toLocaleUpperCase('tr-TR')}</Text>
+                            <Text style={{ fontSize: 8 }}>{(config.teacherBranch || '...........................').toLocaleUpperCase('tr-TR')} ÖĞRETMENİ</Text>
                         </View>
                         <View style={{ alignItems: 'center' }}>
                             <Text style={{ fontSize: 8 }}>UYGUNDUR</Text>
-                            <Text style={{ fontSize: 8, marginTop: 2 }}>.... / .... / 20....</Text>
-                            <Text style={{ fontSize: 8, marginTop: 10, fontWeight: 'bold' }}>{(config.principalName || 'Okul Müdürü').toLocaleUpperCase('tr-TR')}</Text>
+                            <Text style={{ fontSize: 8, marginTop: 2 }}>
+                                {config.reportDate ? new Date(config.reportDate).toLocaleDateString('tr-TR') : '.... / .... / 20....'}
+                            </Text>
+                            <Text style={{ fontSize: 8, marginTop: 4, fontWeight: 'bold' }}>{(config.principalName || '...........................').toLocaleUpperCase('tr-TR')}</Text>
+                            <Text style={{ fontSize: 8 }}>OKUL MÜDÜRÜ</Text>
                         </View>
                     </View>
                 </Page>

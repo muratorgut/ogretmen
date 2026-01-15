@@ -17,12 +17,13 @@ export default function Step1Upload() {
     const [error, setError] = useState<string | null>(null);
     const [warning, setWarning] = useState<string | null>(null);
     const [apiKey, setApiKey] = useState(storeApiKey || '');
-    const [geminiModel, setGeminiModel] = useState<GeminiModel>(storeGeminiModel || 'gemini-3-flash-preview');
+    const [geminiModel, setGeminiModel] = useState<GeminiModel>(storeGeminiModel || 'gemini-2.0-flash');
     const [progressText, setProgressText] = useState<string>("");
 
     // Intermediate state for class selection
     const [parsedGroups, setParsedGroups] = useState<any[]>([]); // To store raw parsed classes
-    const [selectedGroupIndices, setSelectedGroupIndices] = useState<number[]>([]); // To store selected indices
+    // Key: Index of parsedGroups, Value: Selection state
+    const [selectionState, setSelectionState] = useState<Record<number, { selected: boolean; p1: boolean; p2: boolean }>>({});
     const [isSelectionMode, setIsSelectionMode] = useState(false);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,6 +41,7 @@ export default function Step1Upload() {
         setError(null);
         setWarning(null);
         setParsedGroups([]);
+        setSelectionState({});
         setIsSelectionMode(false);
 
         try {
@@ -100,8 +102,14 @@ export default function Step1Upload() {
 
             // Successfully parsed everything. Now Enter Selection Mode.
             setParsedGroups(tempGroups);
-            // Default select all
-            setSelectedGroupIndices(tempGroups.map((_, idx) => idx));
+
+            // Initialize selection state: All selected, P1 and P2 enabled by default
+            const initialSelection: Record<number, { selected: boolean; p1: boolean; p2: boolean }> = {};
+            tempGroups.forEach((_, idx) => {
+                initialSelection[idx] = { selected: true, p1: true, p2: true };
+            });
+            setSelectionState(initialSelection);
+
             setIsSelectionMode(true);
 
         } catch (err: any) {
@@ -112,25 +120,46 @@ export default function Step1Upload() {
         }
     };
 
-    const toggleSelection = (index: number) => {
-        setSelectedGroupIndices(prev =>
-            prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
-        );
+    const toggleGroupSelection = (index: number) => {
+        setSelectionState(prev => ({
+            ...prev,
+            [index]: { ...prev[index], selected: !prev[index].selected }
+        }));
+    };
+
+    const toggleP1 = (index: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSelectionState(prev => ({
+            ...prev,
+            [index]: { ...prev[index], p1: !prev[index].p1 }
+        }));
+    };
+
+    const toggleP2 = (index: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSelectionState(prev => ({
+            ...prev,
+            [index]: { ...prev[index], p2: !prev[index].p2 }
+        }));
     };
 
     const handleConfirmSelection = () => {
-        if (selectedGroupIndices.length === 0) {
+        const selectedIndices = Object.keys(selectionState)
+            .map(Number)
+            .filter(idx => selectionState[idx].selected);
+
+        if (selectedIndices.length === 0) {
             setError("Lütfen en az bir sınıf seçiniz.");
             return;
         }
 
         const allStudents: any[] = [];
 
-        // Filter and Flatten
-        selectedGroupIndices.forEach(idx => {
+        selectedIndices.forEach(idx => {
             const cls = parsedGroups[idx];
+            const state = selectionState[idx];
+
             const classStudents = cls.students.map((s: any) => ({
-                // Create a composite unique ID to allow same student in multiple lessons
                 id: `${s.studentNo}-${cls.metadata.lessonName}-${cls.metadata.className}`.replace(/\s+/g, '_'),
                 studentNo: s.studentNo,
                 name: s.name,
@@ -138,6 +167,8 @@ export default function Step1Upload() {
                 y2: 0,
                 p1: s.p1,
                 p2: s.p2,
+                distributeP1: state.p1,
+                distributeP2: state.p2,
                 schoolName: cls.metadata.schoolName,
                 academicYear: cls.metadata.academicYear,
                 className: cls.metadata.className,
@@ -146,20 +177,22 @@ export default function Step1Upload() {
             allStudents.push(...classStudents);
         });
 
-        // Check for G/0/empty values
-        const studentsWithZeroOrEmpty = allStudents.filter(s =>
-            s.p1 === 0 || s.p2 === 0 || s.p1 === null || s.p2 === null
-        );
+        // Filter out zero/empty values ONLY if that specific performance type is selected for distribution
+        const studentsWithIssues = allStudents.filter(s => {
+            const p1Issue = s.distributeP1 && (s.p1 === 0 || s.p1 === null);
+            const p2Issue = s.distributeP2 && (s.p2 === 0 || s.p2 === null);
+            return p1Issue || p2Issue;
+        });
 
-        if (studentsWithZeroOrEmpty.length > 0) {
-            setWarning(`Dikkat: Seçilen sınıflarda ${studentsWithZeroOrEmpty.length} öğrencide P1 veya P2 notu 0, "G" veya boş olarak tespit edildi.`);
+        if (studentsWithIssues.length > 0) {
+            setWarning(`Dikkat: Seçilen sınıflarda ${studentsWithIssues.length} öğrencinin, dağıtılması istenen (P1 veya P2) notu girilmemiş (0 veya boş).`);
         }
 
         const firstStudent = allStudents[0];
         setParsedData(
             {
                 lessonName: firstStudent.lessonName || 'Ders',
-                className: `${selectedGroupIndices.length} Sınıf / ${allStudents.length} Öğrenci`
+                className: `${selectedIndices.length} Sınıf / ${allStudents.length} Öğrenci`
             },
             allStudents
         );
@@ -172,35 +205,61 @@ export default function Step1Upload() {
         return (
             <Card className="w-full max-w-2xl mx-auto mt-10">
                 <CardHeader>
-                    <CardTitle>Sınıf Seçimi</CardTitle>
+                    <CardTitle>Sınıf ve Not Tipi Seçimi</CardTitle>
                     <CardDescription>
-                        Bulunan sınıflar aşağıda listelenmiştir. Dağıtım yapmak istediklerinizi seçin.
+                        Hangi sınıflar ve hangi not türleri (P1/P2) için dağıtım yapılacağını seçin.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid gap-2 max-h-[400px] overflow-y-auto pr-2">
-                        {parsedGroups.map((group, idx) => (
-                            <div key={idx}
-                                className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${selectedGroupIndices.includes(idx) ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`}
-                                onClick={() => toggleSelection(idx)}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedGroupIndices.includes(idx) ? 'bg-blue-600 border-blue-600 params-white' : 'border-gray-300'}`}>
-                                        {selectedGroupIndices.includes(idx) && <span className="text-white text-xs">✓</span>}
+                        {parsedGroups.map((group, idx) => {
+                            const state = selectionState[idx] || { selected: false, p1: false, p2: false };
+                            return (
+                                <div key={idx}
+                                    className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${state.selected ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`}
+                                    onClick={() => toggleGroupSelection(idx)}
+                                >
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${state.selected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>
+                                            {state.selected && <span className="text-xs">✓</span>}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-sm">{group.metadata.className} - {group.metadata.lessonName}</p>
+                                            <p className="text-xs text-muted-foreground">{group.students.length} Öğrenci</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-semibold text-sm">{group.metadata.className} - {group.metadata.lessonName}</p>
-                                        <p className="text-xs text-muted-foreground">{group.students.length} Öğrenci</p>
+
+                                    {/* P1 / P2 Checkboxes */}
+                                    <div className="flex gap-4" onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                className={`w-5 h-5 rounded border flex items-center justify-center cursor-pointer ${state.p1 ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-gray-300 bg-white'}`}
+                                                onClick={(e) => { if (state.selected) toggleP1(idx, e); }}
+                                            >
+                                                {state.p1 && <span className="text-xs">✓</span>}
+                                            </div>
+                                            <span className={`text-sm font-medium ${!state.selected ? 'text-gray-400' : ''}`}>P1</span>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                className={`w-5 h-5 rounded border flex items-center justify-center cursor-pointer ${state.p2 ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-gray-300 bg-white'}`}
+                                                onClick={(e) => { if (state.selected) toggleP2(idx, e); }}
+                                            >
+                                                {state.p2 && <span className="text-xs">✓</span>}
+                                            </div>
+                                            <span className={`text-sm font-medium ${!state.selected ? 'text-gray-400' : ''}`}>P2</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <div className="flex justify-end gap-2 pt-4">
                         <Button variant="outline" onClick={() => { setIsSelectionMode(false); setParsedGroups([]); }}>İptal / Yeni Yükle</Button>
-                        <Button onClick={handleConfirmSelection} disabled={selectedGroupIndices.length === 0}>
-                            Seçilenleri Onayla ({selectedGroupIndices.length})
+                        <Button onClick={handleConfirmSelection} disabled={Object.values(selectionState).filter(s => s.selected).length === 0}>
+                            Seçilenleri Onayla ({Object.values(selectionState).filter(s => s.selected).length})
                         </Button>
                     </div>
                 </CardContent>
@@ -219,40 +278,7 @@ export default function Step1Upload() {
             </CardHeader>
             <CardContent className="space-y-6">
 
-                {/* Gemini Model Selection */}
-                <div className="space-y-2">
-                    <Label>Google Gemini Model</Label>
-                    <Select value={geminiModel} onValueChange={(v) => setGeminiModel(v as GeminiModel)}>
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Model Seçin" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro (Preview)</SelectItem>
-                            <SelectItem value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</SelectItem>
-                            <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
-                            <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</SelectItem>
-                            <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
-                            <SelectItem value="gemini-2.0-flash-lite-preview-02-05">Gemini 2.0 Flash-Lite</SelectItem>
-                            <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
-                            <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
 
-                <div className="space-y-2">
-                    <Label htmlFor="apiKey">Google Gemini API Key (Opsiyonel)</Label>
-                    <Input
-                        id="apiKey"
-                        type="password"
-                        placeholder="Boş bırakılırsa sistem anahtarı kullanılır"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        onCopy={(e) => e.preventDefault()}
-                        onCut={(e) => e.preventDefault()}
-                        autoComplete="off"
-                    />
-                    <p className="text-xs text-muted-foreground">Eğer kendi anahtarınızı kullanmak istiyorsanız buraya girin.</p>
-                </div>
 
                 <div className="grid w-full items-center gap-1.5">
                     <Label htmlFor="file" className="text-lg font-semibold mb-2">

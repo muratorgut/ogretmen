@@ -19,7 +19,7 @@ const GeminiModelSchema = z.enum([
 const RequestSchema = z.object({
     file: z.string(), // Base64 encoded PDF
     apiKey: z.string(),
-    geminiModel: GeminiModelSchema.optional().default('gemini-3-flash-preview'),
+    geminiModel: GeminiModelSchema.optional().default('gemini-2.0-flash'),
 });
 
 export async function POST(req: NextRequest) {

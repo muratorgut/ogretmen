@@ -56,7 +56,9 @@ export default function Step3Processing() {
                         y1: s.y1,
                         y2: s.y2,
                         p1: s.p1,
-                        p2: s.p2
+                        p2: s.p2,
+                        distributeP1: s.distributeP1,
+                        distributeP2: s.distributeP2
                     }));
 
                     const response = await fetch('/api/distribute', {

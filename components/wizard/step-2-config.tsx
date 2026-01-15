@@ -88,7 +88,7 @@ export default function Step2Config() {
                 </div>
 
                 {/* Öğretmen ve Müdür Bilgileri */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 border rounded-lg bg-blue-50">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg bg-blue-50">
                     <div className="space-y-1">
                         <Label>Ders Öğretmeni Adı Soyadı</Label>
                         <Input
@@ -111,6 +111,14 @@ export default function Step2Config() {
                             value={localConfig.principalName}
                             onChange={(e) => setLocalConfig({ ...localConfig, principalName: e.target.value })}
                             placeholder="Örn: Mehmet DEMİR"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <Label>Rapor Tarihi</Label>
+                        <Input
+                            type="date"
+                            value={localConfig.reportDate || ''}
+                            onChange={(e) => setLocalConfig({ ...localConfig, reportDate: e.target.value })}
                         />
                     </div>
                 </div>

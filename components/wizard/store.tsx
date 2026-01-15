@@ -11,6 +11,8 @@ export interface Student {
   y2?: number; // Yazılı 2
   p1?: number; // Performans 1 (e-Okul'daki)
   p2?: number; // Performans 2 (e-Okul'daki)
+  distributeP1?: boolean; // P1 dağıtımı yapılsın mı?
+  distributeP2?: boolean; // P2 dağıtımı yapılsın mı?
 
   // Metadata per student (since PDF might contain multiple classes)
   schoolName?: string;
@@ -37,6 +39,7 @@ export interface AppConfig {
   teacherName: string;
   teacherBranch: string;
   principalName: string;
+  reportDate?: string;
 }
 
 export type GeminiModel =
@@ -79,7 +82,7 @@ const defaultState: AppState = {
   meta: { lessonName: '', className: '' },
   students: [],
   apiKey: '',
-  geminiModel: 'gemini-3-flash-preview',
+  geminiModel: 'gemini-2.0-flash',
   config: {
     p1Name: 'Derse Hazırlık ve Katılım',
     p2Name: 'Proje',
@@ -100,7 +103,8 @@ const defaultState: AppState = {
     ],
     teacherName: '',
     teacherBranch: '',
-    principalName: ''
+    principalName: '',
+    reportDate: new Date().toISOString().split('T')[0] // Default to today
   }
 };
 
