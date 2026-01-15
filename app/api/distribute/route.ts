@@ -135,7 +135,18 @@ export async function POST(req: NextRequest) {
                 });
 
                 if (result.object && result.object.distributions) {
-                    distributions.push(...result.object.distributions);
+                    // Post-process to ensure validity
+                    const validatedChunk = result.object.distributions.map(d => {
+                        const student = students.find(s => s.id === d.studentId);
+                        if (!student) return d;
+
+                        return {
+                            ...d,
+                            p1_scores: validateScores(d.p1_scores, rubricsP1, student.p1, roundingRule),
+                            p2_scores: validateScores(d.p2_scores, rubricsP2, student.p2, roundingRule)
+                        };
+                    });
+                    distributions.push(...validatedChunk);
                 }
             } catch (err: any) {
                 console.error(`Batch Processing Error (Students ${chunk[0]?.id} - ${chunk[chunk.length - 1]?.id}):`, err);
@@ -156,4 +167,82 @@ export async function POST(req: NextRequest) {
         console.error("AI Error:", error);
         return NextResponse.json({ error: error.message || 'Error generating scores' }, { status: 500 });
     }
+}
+
+// Helper function to validate and correct scores
+function validateScores(
+    scores: { rubricId: string; score: number }[],
+    rubrics: { id: string; maxScore: number }[],
+    targetTotal: number | undefined,
+    roundingRule: number
+): { rubricId: string; score: number }[] {
+    if (!targetTotal || scores.length === 0) return scores;
+
+    // 1. Initial Pass: Clamp and Round everything to the rule
+    let currentScores = scores.map(s => {
+        const rubric = rubrics.find(r => r.id === s.rubricId);
+        const max = rubric ? rubric.maxScore : 100;
+
+        let rounded = Math.round(s.score / roundingRule) * roundingRule;
+        rounded = Math.min(Math.max(0, rounded), max);
+
+        return {
+            ...s,
+            max,
+            score: rounded
+        };
+    });
+
+    // 2. Adjust to match target
+    let currentSum = currentScores.reduce((a, b) => a + b.score, 0);
+    let diff = targetTotal - currentSum;
+
+    let iterations = 0;
+    const MAX_ITERATIONS = 100;
+
+    while (diff !== 0 && iterations < MAX_ITERATIONS) {
+        iterations++;
+
+        // Determine the step size. 
+        // Ideally we move by roundingRule. 
+        // But if the diff is not divisible by roundingRule (e.g. Target 88, Rule 10), we might loop forever.
+        // Strategy: Try to move by roundingRule. If diff is smaller than rule, move by diff (breaking the rule for one item to save the sum).
+
+        let step = roundingRule;
+
+        if (Math.abs(diff) < roundingRule) {
+            step = Math.abs(diff); // Final adjustment for odd numbers
+        }
+
+        if (diff > 0) {
+            // Need to ADD points
+            // Find candidates that are not full (score + step <= max)
+            const candidates = currentScores.filter(s => s.score + step <= s.max);
+
+            if (candidates.length === 0) {
+                // Force add to someone even if it exceeds "logical" preference, but we MUST respect MAX.
+                // If all are at MAX, we can't do anything. Break.
+                break;
+            }
+
+            // Randomly pick one
+            const randomIdx = Math.floor(Math.random() * candidates.length);
+            candidates[randomIdx].score += step;
+
+        } else {
+            // Need to SUBTRACT points
+            // Find candidates that can afford it (score - step >= 0)
+            const candidates = currentScores.filter(s => s.score - step >= 0);
+
+            if (candidates.length === 0) break; // Cannot subtract, all zero
+
+            const randomIdx = Math.floor(Math.random() * candidates.length);
+            candidates[randomIdx].score -= step;
+        }
+
+        currentSum = currentScores.reduce((a, b) => a + b.score, 0);
+        diff = targetTotal - currentSum;
+    }
+
+    return currentScores.map(s => ({ rubricId: s.rubricId, score: s.score }));
 }

@@ -1,28 +1,65 @@
 "use client"
 
 import React, { useState } from 'react';
-import { useAppStore, RubricItem } from './store';
+import { useAppStore, RubricItem, defaultConfig } from './store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, ArrowLeft, Loader2, RefreshCcw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function Step2Config() {
-    const { step, setStep, config, updateConfig } = useAppStore();
+    const { step, setStep, config, updateConfig, isConfigLoaded, saveConfig } = useAppStore();
     const [localConfig, setLocalConfig] = useState(config);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Sync local config if store config updates (e.g. after initial load)
+    React.useEffect(() => {
+        if (isConfigLoaded) {
+            setLocalConfig(config);
+        }
+    }, [config, isConfigLoaded]);
 
     if (step !== 2) return null;
 
-    const handleNext = () => {
-        // Validate that rubrics exist and sum logical?
-        // Warn if sum != 100 but allow proceeding?
-        // For now proceed
-        updateConfig(localConfig);
-        setStep(3);
+    if (!isConfigLoaded) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">Ayarlar yükleniyor...</p>
+            </div>
+        );
+    }
+
+    const handleNext = async () => {
+        setIsSaving(true);
+        try {
+            updateConfig(localConfig);
+
+            // Create a timeout promise that rejects after 5 seconds
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Save timeout")), 5000)
+            );
+
+            // Race the save against the timeout
+            // If save is slow, we will catch the error and proceed anyway
+            await Promise.race([
+                saveConfig(localConfig),
+                timeoutPromise
+            ]);
+
+            setStep(3);
+        } catch (error: any) {
+            console.error("Save failed or timed out", error);
+            // Proceed anyway so user isn't stuck
+            setStep(3);
+            // Optional: You could show a toast here saying "Otomatik kayıt yapılamadı ama devam ediliyor"
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const addRubricItem = (type: 'p1' | 'p2') => {
@@ -85,6 +122,19 @@ export default function Step2Config() {
                             </SelectContent>
                         </Select>
                     </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            if (window.confirm('Tüm ayarları varsayılan değerlere döndürmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) {
+                                setLocalConfig(defaultConfig);
+                            }
+                        }}
+                        className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-200"
+                    >
+                        <RefreshCcw className="w-4 h-4 mr-2" />
+                        Varsayılan Ayarları Yükle
+                    </Button>
                 </div>
 
                 {/* Öğretmen ve Müdür Bilgileri */}
@@ -157,8 +207,16 @@ export default function Step2Config() {
                 <Button variant="outline" onClick={() => setStep(1)}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Geri
                 </Button>
-                <Button onClick={handleNext}>
-                    Devam Et <ArrowRight className="ml-2 h-4 w-4" />
+                <Button onClick={handleNext} disabled={isSaving}>
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Kaydediliyor...
+                        </>
+                    ) : (
+                        <>
+                            Devam Et <ArrowRight className="ml-2 h-4 w-4" />
+                        </>
+                    )}
                 </Button>
             </CardFooter>
         </Card>

@@ -83,7 +83,14 @@ const PdfDownloadButton = ({ students, config, meta, type, btnText }: Props) => 
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `${meta.className}_${type}_Cizelge.pdf`;
+            const randomNum = Math.floor(Math.random() * 900) + 100; // 100-999
+            const safeTeacherName = config.teacherName.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ ]/g, "").replace(/\s+/g, "_") || "Ogretmen";
+            // Normalizing Turkish characters for filename safety isn't strictly necessary for modern OS but good for compatibility.
+            // Leaving as is for now, but ensured structure is correct.
+
+            // Construct filename: "performans"_$öğretmen_adı_soyadı_$rastgele_3_basamaklı_sayı
+            link.download = `performans_${safeTeacherName}_${randomNum}.pdf`;
+
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -129,7 +136,7 @@ const PdfDownloadButton = ({ students, config, meta, type, btnText }: Props) => 
             onClick={handleDownload}
             disabled={status === 'GENERATING'}
         >
-            {status === 'GENERATING' ? 'PDF Oluşturuluyor...' : `${btnText} (İndir)`}
+            {status === 'GENERATING' ? 'PDF Oluşturuluyor...' : btnText}
         </Button>
     );
 };

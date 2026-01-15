@@ -74,7 +74,33 @@ interface AppContextType extends AppState {
   updateConfig: (config: Partial<AppConfig>) => void;
   updateStudentScores: (studentId: string, scores: Record<string, number>) => void;
   reset: () => void;
+  isConfigLoaded: boolean;
+  saveConfig: (configOverride?: AppConfig) => Promise<void>;
 }
+
+export const defaultConfig: AppConfig = {
+  p1Name: 'Derse Hazırlık ve Katılım',
+  p2Name: 'Proje',
+  roundingRule: 5,
+  rubricsP1: [
+    { id: 'p1_1', label: 'Hazırlıklı Gelme ve Materyal Kullanımı', maxScore: 20, description: '' },
+    { id: 'p1_2', label: 'Derse İlgi ve Odaklanma', maxScore: 20, description: '' },
+    { id: 'p1_3', label: 'Soru-Cevap ve Tartışmalara Katılım', maxScore: 20, description: '' },
+    { id: 'p1_4', label: 'Bireysel ve Grupla Çalışma Becerisi', maxScore: 20, description: '' },
+    { id: 'p1_5', label: 'Akademik Gelişim ve Uygulama', maxScore: 20, description: '' }
+  ],
+  rubricsP2: [
+    { id: 'p2_1', label: 'İçeriğin Doğruluğu ve Kapsamlılığı', maxScore: 20, description: '' },
+    { id: 'p2_2', label: 'Araştırma ve Kaynak Kullanımı', maxScore: 20, description: '' },
+    { id: 'p2_3', label: 'Düzen, Tertip ve Estetik Görünüm', maxScore: 20, description: '' },
+    { id: 'p2_4', label: 'Özgünlük ve Yaratıcılık', maxScore: 20, description: '' },
+    { id: 'p2_5', label: 'Zamanlama ve Teslim Süreci', maxScore: 20, description: '' }
+  ],
+  teacherName: '',
+  teacherBranch: '',
+  principalName: '',
+  reportDate: new Date().toISOString().split('T')[0] // Default to today
+};
 
 const defaultState: AppState = {
   step: 1,
@@ -83,29 +109,7 @@ const defaultState: AppState = {
   students: [],
   apiKey: '',
   geminiModel: 'gemini-2.0-flash',
-  config: {
-    p1Name: 'Derse Hazırlık ve Katılım',
-    p2Name: 'Proje',
-    roundingRule: 5,
-    rubricsP1: [
-      { id: 'p1_1', label: 'Hazırlıklı Gelme ve Materyal Kullanımı', maxScore: 20, description: '' },
-      { id: 'p1_2', label: 'Derse İlgi ve Odaklanma', maxScore: 20, description: '' },
-      { id: 'p1_3', label: 'Soru-Cevap ve Tartışmalara Katılım', maxScore: 20, description: '' },
-      { id: 'p1_4', label: 'Bireysel ve Grupla Çalışma Becerisi', maxScore: 20, description: '' },
-      { id: 'p1_5', label: 'Akademik Gelişim ve Uygulama', maxScore: 20, description: '' }
-    ],
-    rubricsP2: [
-      { id: 'p2_1', label: 'İçeriğin Doğruluğu ve Kapsamlılığı', maxScore: 20, description: '' },
-      { id: 'p2_2', label: 'Araştırma ve Kaynak Kullanımı', maxScore: 20, description: '' },
-      { id: 'p2_3', label: 'Düzen, Tertip ve Estetik Görünüm', maxScore: 20, description: '' },
-      { id: 'p2_4', label: 'Özgünlük ve Yaratıcılık', maxScore: 20, description: '' },
-      { id: 'p2_5', label: 'Zamanlama ve Teslim Süreci', maxScore: 20, description: '' }
-    ],
-    teacherName: '',
-    teacherBranch: '',
-    principalName: '',
-    reportDate: new Date().toISOString().split('T')[0] // Default to today
-  }
+  config: defaultConfig
 };
 
 import { useAuth } from '@/components/providers/auth-provider';
@@ -118,10 +122,12 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AppState>(defaultState);
   const { user } = useAuth();
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
   // Load config on mount/login
   useEffect(() => {
     if (user) {
+      setIsConfigLoaded(false); // Reset on user change
       getUserConfig(user.uid).then((savedConfig) => {
         if (savedConfig) {
           setState((prev) => ({
@@ -129,22 +135,30 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             config: { ...prev.config, ...savedConfig }
           }));
         }
+        setIsConfigLoaded(true); // Mark as loaded whether we found data or not
       });
+    } else {
+      // If no user, technically config is "loaded" as default
+      setIsConfigLoaded(true);
     }
   }, [user]);
 
   // Debounce config updates to avoid too many writes
   const [debouncedConfig] = useDebounce(state.config, 2000);
 
-  // Save config when it changes
+  // Save config when it changes (Auto-save)
   useEffect(() => {
-    if (user && debouncedConfig) {
-      // Prevent saving default state over existing data on initial load
-      // This is a naive check; a better way is to track 'isLoaded' state
+    if (user && debouncedConfig && isConfigLoaded) {
       saveUserConfig(user.uid, debouncedConfig);
     }
-  }, [debouncedConfig, user]);
+  }, [debouncedConfig, user, isConfigLoaded]);
 
+  const saveConfig = async (configOverride?: AppConfig) => {
+    const configToSave = configOverride || state.config;
+    if (user && configToSave) {
+      await saveUserConfig(user.uid, configToSave);
+    }
+  };
 
   const setStep = (step: number) => setState(prev => ({ ...prev, step }));
 
@@ -191,7 +205,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setParsedData,
       updateConfig,
       updateStudentScores,
-      reset
+      reset,
+      isConfigLoaded,
+      saveConfig
     }}>
       {children}
     </AppContext.Provider>
