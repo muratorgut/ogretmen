@@ -223,7 +223,18 @@ export default function Step2Config() {
     );
 }
 
-function RubricTabContent({ type, titleValue, onTitleChange, items, currentTotal, onAdd, onUpdate, onRemove }: any) {
+interface RubricTabContentProps {
+    type: 'p1' | 'p2';
+    titleValue: string;
+    onTitleChange: (value: string) => void;
+    items: RubricItem[];
+    currentTotal: number;
+    onAdd: () => void;
+    onUpdate: (id: string, field: keyof RubricItem, value: any) => void;
+    onRemove: (id: string) => void;
+}
+
+function RubricTabContent({ type, titleValue, onTitleChange, items, currentTotal, onAdd, onUpdate, onRemove }: RubricTabContentProps) {
     return (
         <TabsContent value={type} className="space-y-4 mt-4">
             <div className="grid gap-2">

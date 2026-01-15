@@ -12,19 +12,29 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function Step1Upload() {
-    const { setFile, setParsedData, step, setApiKey: setStoreApiKey, setGeminiModel: setStoreGeminiModel, geminiModel: storeGeminiModel, apiKey: storeApiKey } = useAppStore();
+    const {
+        setFile,
+        setParsedData,
+        step,
+        setApiKey: setStoreApiKey,
+        setGeminiModel: setStoreGeminiModel,
+        geminiModel: storeGeminiModel,
+        apiKey: storeApiKey,
+        // New Store Properties and Setters
+        parsedGroups,
+        setParsedGroups,
+        selectionState,
+        setSelectionState,
+        isSelectionMode,
+        setIsSelectionMode
+    } = useAppStore();
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [warning, setWarning] = useState<string | null>(null);
     const [apiKey, setApiKey] = useState(storeApiKey || '');
     const [geminiModel, setGeminiModel] = useState<GeminiModel>(storeGeminiModel || 'gemini-2.0-flash');
     const [progressText, setProgressText] = useState<string>("");
-
-    // Intermediate state for class selection
-    const [parsedGroups, setParsedGroups] = useState<any[]>([]); // To store raw parsed classes
-    // Key: Index of parsedGroups, Value: Selection state
-    const [selectionState, setSelectionState] = useState<Record<number, { selected: boolean; p1: boolean; p2: boolean }>>({});
-    const [isSelectionMode, setIsSelectionMode] = useState(false);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -121,26 +131,29 @@ export default function Step1Upload() {
     };
 
     const toggleGroupSelection = (index: number) => {
-        setSelectionState(prev => ({
-            ...prev,
-            [index]: { ...prev[index], selected: !prev[index].selected }
-        }));
+        const prev = selectionState[index] || { selected: false, p1: false, p2: false };
+        setSelectionState({
+            ...selectionState,
+            [index]: { ...prev, selected: !prev.selected }
+        });
     };
 
     const toggleP1 = (index: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        setSelectionState(prev => ({
-            ...prev,
-            [index]: { ...prev[index], p1: !prev[index].p1 }
-        }));
+        const prev = selectionState[index];
+        setSelectionState({
+            ...selectionState,
+            [index]: { ...prev, p1: !prev.p1 }
+        });
     };
 
     const toggleP2 = (index: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        setSelectionState(prev => ({
-            ...prev,
-            [index]: { ...prev[index], p2: !prev[index].p2 }
-        }));
+        const prev = selectionState[index];
+        setSelectionState({
+            ...selectionState,
+            [index]: { ...prev, p2: !prev.p2 }
+        });
     };
 
     const handleConfirmSelection = () => {

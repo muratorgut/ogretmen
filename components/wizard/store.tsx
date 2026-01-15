@@ -63,6 +63,10 @@ interface AppState {
   config: AppConfig;
   apiKey?: string;
   geminiModel: GeminiModel;
+  // Selection State (Moved from Step 1)
+  parsedGroups: any[];
+  selectionState: Record<number, { selected: boolean; p1: boolean; p2: boolean }>;
+  isSelectionMode: boolean;
 }
 
 interface AppContextType extends AppState {
@@ -71,6 +75,12 @@ interface AppContextType extends AppState {
   setApiKey: (key: string) => void;
   setGeminiModel: (model: GeminiModel) => void;
   setParsedData: (meta: { lessonName: string; className: string }, students: Student[]) => void;
+
+  // Selection Setters
+  setParsedGroups: (groups: any[]) => void;
+  setSelectionState: (state: Record<number, { selected: boolean; p1: boolean; p2: boolean }>) => void;
+  setIsSelectionMode: (isSelectionMode: boolean) => void;
+
   updateConfig: (config: Partial<AppConfig>) => void;
   updateStudentScores: (studentId: string, scores: Record<string, number>) => void;
   reset: () => void;
@@ -109,7 +119,10 @@ const defaultState: AppState = {
   students: [],
   apiKey: '',
   geminiModel: 'gemini-2.0-flash',
-  config: defaultConfig
+  config: defaultConfig,
+  parsedGroups: [],
+  selectionState: {},
+  isSelectionMode: false
 };
 
 import { useAuth } from '@/components/providers/auth-provider';
@@ -177,6 +190,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const setParsedGroups = (groups: any[]) => setState(prev => ({ ...prev, parsedGroups: groups }));
+  const setSelectionState = (selectionState: Record<number, { selected: boolean; p1: boolean; p2: boolean }>) => setState(prev => ({ ...prev, selectionState }));
+  const setIsSelectionMode = (isSelectionMode: boolean) => setState(prev => ({ ...prev, isSelectionMode }));
+
   const updateConfig = (newConfig: Partial<AppConfig>) => {
     setState(prev => ({
       ...prev,
@@ -203,6 +220,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setApiKey,
       setGeminiModel,
       setParsedData,
+      setParsedGroups,
+      setSelectionState,
+      setIsSelectionMode,
       updateConfig,
       updateStudentScores,
       reset,
